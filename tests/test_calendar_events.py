@@ -1,3 +1,4 @@
+import pytest
 from calendar_events import *
 
 test_username = "Enter a valid test_username"
@@ -28,9 +29,23 @@ def test_update_events():
     delete_event(test_username, updated_event['id'])
 
 
+def test_wrong_dates():
+    with pytest.raises(ValueError):
+        create_event(test_username, title="test title", start="2022-01-01", end="2020-01-03")
+    with pytest.raises(TypeError):
+        create_event(test_username, title=123, start="2020-01-01", end="2021-01-03")
+    with pytest.raises(TypeError):
+        create_event(test_username, description=123, start="2020-01-01", end="2021-01-03")
+    with pytest.raises(TypeError):
+        create_event(test_username, title="valid", description=123, start="2020-01-01",end="2021-01-03")
+    with pytest.raises(ValueError):
+        create_event(test_username, title="valid", show_me_as="invalid", start="2020-01-01",end="2021-01-03")
+
+
 try:
     test_create_events()
     test_update_events()
+    test_wrong_dates()
     print("Tests passed!")
 except Exception as e:
     print("Test failed! \n\n", e)
