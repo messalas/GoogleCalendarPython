@@ -1,8 +1,11 @@
 import sys
 import pickle
+import os
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+
+os.makedirs("tokens", exist_ok=True)
 
 
 def get_token(username):
