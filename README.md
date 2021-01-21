@@ -43,6 +43,6 @@ Each method has additional parameters
  ```python
 create_event("papadopoulos", "Άδεια Παπαδόπουλος", "2021-05-15", "2021-05-25", "Μια περιγραφή της άδειας (μπορεί να παραληφθεί)", "busy")
 
-update_event("papadopoulos", )
+update_event("papadopoulos", title="ΑΔΕΙΑ ΠΑΠΑΔΟΠΟΥΛΟΥ", start="2021-05-13")
 
  ```
