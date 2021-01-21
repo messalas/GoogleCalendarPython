@@ -2,12 +2,36 @@ import datetime
 import pickle
 from googleapiclient.discovery import build
 
-CALENDAR_ID = "Enter here the Calendar ID"
+CALENDAR_ID =  "Enter here the Calendar ID"
 
 transparency_d = dict(busy="opaque", available="transparent")
 
 
 def create_event(username, title, start, end, description=" ", show_me_as="busy"):
+    """ Creates a google event
+    Parameters
+    ----------
+    username : str,
+        The name of the token file located in the "tokens/" directory
+        (without the extension '.pkl') that corresponds to a specific user.
+    title : str,
+        The title of the event
+    start : str,
+        The starting date of the event. Must be in the form "YYYY-MM-DD"
+        e.g. "2021-03-15"
+    end :str,
+        The ending date of the event. Must be in the form "YYYY-MM-DD"
+        e.g. "2021-03-18"
+    description : str, (default=" ")
+        A small description of the event.
+    show_me_as : str, (default="busy")
+        If "busy", it leads to "Show me as" to "Busy" in the Calendar UI
+        If "available", it leads to "Show me as" to "Available" in the Calendar UI
+    Returns
+    -------
+    created_event : dict
+        A dictionary containing information about the created event
+    """
     _validate_params(title, start, end, description, show_me_as)
 
     token = "tokens/" + username + ".pkl"
@@ -26,6 +50,15 @@ def create_event(username, title, start, end, description=" ", show_me_as="busy"
 
 
 def delete_event(username, event_id):
+    """ Deletes an existing event
+    Parameters
+    ----------
+    username : str,
+        The name of the token file located in the "tokens/" directory
+        (without the extension '.pkl') that corresponds to a specific user.
+    event_id : str,
+        The id of the event. It exists in the event dictionary under the key "id"
+    """
     token = "tokens/" + username + ".pkl"
     credentials = pickle.load(open(token, "rb"))
     service = build('calendar', 'v3', credentials=credentials)
@@ -33,6 +66,33 @@ def delete_event(username, event_id):
 
 
 def update_event(username, event_id, title=None, description=None, start=None, end=None, show_me_as=None):
+    """ Updates an existing event
+    Parameters
+    ----------
+    username : str,
+        The name of the token file located in the "tokens/" directory
+        (without the extension '.pkl') that corresponds to a specific user.
+    event_id : str,
+        The id of the event. It exists in the event dictionary under the key "id"
+    title : str (default=None),
+        The title of the event
+    start : str (default=None),
+        The starting date of the event. Must be in the form "YYYY-MM-DD"
+        e.g. "2021-03-15"
+    end :str (default=None),
+        The ending date of the event. Must be in the form "YYYY-MM-DD"
+        e.g. "2021-03-18"
+    description : str, (default=None)
+        A small description of the event.
+    show_me_as : str, (default=None)
+        If "busy", it leads to "Show me as" to "Busy" in the Calendar UI
+        If "available", it leads to "Show me as" to "Available" in the Calendar UI
+
+    Returns
+    -------
+    updated_event : dict
+        A dictionary containing information about the updated event
+    """
     token = "tokens/" + username + ".pkl"
     credentials = pickle.load(open(token, "rb"))
     service = build('calendar', 'v3', credentials=credentials)
@@ -46,27 +106,15 @@ def update_event(username, event_id, title=None, description=None, start=None, e
     event["description"] = description if title else event["description"]
     event["start"]['date'] = start
     event["end"]['date'] = end
-    # event["transparency"] = transparency_d.get(show_me_as) if show_me_as else event["transparency"]
+    try:
+        event["transparency"] = transparency_d.get(show_me_as) if show_me_as else event["transparency"]
+    except KeyError as err:  # Look issue #1
+        print(err)
     return service.events().update(calendarId=CALENDAR_ID, eventId=event['id'], body=event).execute()
 
 
-def get_event(username, event_id=None, maxResults=None):
-    token = "tokens/" + username + ".pkl"
-    credentials = pickle.load(open(token, "rb"))
-    service = build('calendar', 'v3', credentials=credentials)
-    now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-
-    if event_id:
-        return service.events().get(calendarId=CALENDAR_ID, eventId=event_id).execute()
-
-    if maxResults:
-        events_result = service.events().list(calendarId=CALENDAR_ID, timeMin=now,
-                                              maxResults=maxResults, singleEvents=True,
-                                              orderBy='startTime').execute()
-        return events_result.get('items', [])
-
-
 def _validate_params(title, start, end, description, show_me_as):
+    """ Helper function that validates the parameters """
     if start and end:
         start_date = datetime.datetime.strptime(start, '%Y-%m-%d')
         end_date = datetime.datetime.strptime(end, '%Y-%m-%d')
@@ -82,3 +130,36 @@ def _validate_params(title, start, end, description, show_me_as):
     if show_me_as and transparency_d.get(show_me_as) is None:
         raise ValueError(f"Invalid value ({show_me_as}) for show_me_as. "
                          f"Accepted values are: {list(transparency_d.keys())}")
+
+
+def get_event(username, event_id=None, maxResults=None):
+    """ Returns a specific event or a number of upcoming events
+    Parameters
+    ----------
+    username : str,
+        The name of the token file located in the "tokens/" directory
+        (without the extension '.pkl') that corresponds to a specific user.
+    event_id : str, (default=None)
+        The id of the event. It exists in the event dictionary under the key "id"
+    maxResults : int, (default=None)
+        The number of upcoming events to return
+    Returns
+    -------
+    A single or a list of events dictionaries
+    """
+    token = "tokens/" + username + ".pkl"
+    credentials = pickle.load(open(token, "rb"))
+    service = build('calendar', 'v3', credentials=credentials)
+    now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+
+    if event_id and maxResults:
+        raise ValueError("event_id and maxResults cannot be set at the same time. Choose one.")
+
+    if event_id:
+        return service.events().get(calendarId=CALENDAR_ID, eventId=event_id).execute()
+
+    if maxResults:
+        events_result = service.events().list(calendarId=CALENDAR_ID, timeMin=now,
+                                              maxResults=maxResults, singleEvents=True,
+                                              orderBy='startTime').execute()
+        return events_result.get('items', [])
